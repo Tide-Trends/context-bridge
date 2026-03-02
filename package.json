@@ -1,0 +1,19 @@
+{
+  "name": "context-bridge",
+  "version": "1.0.0",
+  "description": "Shared MCP server for cross-tool AI context sharing",
+  "type": "module",
+  "bin": {
+    "context-bridge": "./src/index.js"
+  },
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node test/round-trip.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "better-sqlite3": "^11.8.1",
+    "uuid": "^11.1.0"
+  }
+}
