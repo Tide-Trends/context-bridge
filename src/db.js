@@ -59,6 +59,17 @@ export function getDb() {
     CREATE INDEX IF NOT EXISTS idx_contexts_created ON contexts(created_at);
     CREATE INDEX IF NOT EXISTS idx_chat_project ON chat_logs(project);
     CREATE INDEX IF NOT EXISTS idx_chat_ts ON chat_logs(ts);
+
+    CREATE TABLE IF NOT EXISTS universal_memory (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      category TEXT DEFAULT 'general',
+      source TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_memory_category ON universal_memory(category);
   `);
 
   return _db;

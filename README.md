@@ -8,12 +8,10 @@ Works with **Cursor**, **VS Code (Copilot)**, **Antigravity**, and **OpenCode** 
 
 When you work with multiple AI coding assistants, they don't know what the others did. Context Bridge fixes that:
 
-- **`log_chat`** — Every conversation turn gets auto-compressed and saved per-project
-- **`get_chat`** — Any tool can pick up where another left off (token-budgeted)
-- **`share_context`** — Post decisions, notes, TODOs across tools
-- **`search_contexts`** — Find past decisions before making new ones
-
-All tools share one SQLite DB (`~/.context-bridge/store.db`). Each spawns its own MCP server process. WAL mode handles concurrency.
+- **Per-project chat logging** — Every conversation turn gets auto-compressed and saved. Any tool can pick up where another left off.
+- **Universal memory** — Save preferences and facts that apply to EVERY project (e.g., "Uses Coolify for hosting", "Prefers TypeScript").
+- **Shared context store** — Post decisions, notes, TODOs, snippets across tools. Search them later.
+- **Token-optimized** — Entries auto-compressed on write. Chat retrieval is token-budgeted with rolling summaries for older entries.
 
 ## Setup (30 seconds)
 
@@ -43,26 +41,27 @@ Add to your MCP config:
 }
 ```
 
-## Tools (10 total)
+## Tools (13 total)
 
 | Tool | What it does |
 |------|-------------|
+| **Chat** | |
 | `log_chat` | Save a chat turn (auto-compressed) |
 | `get_chat` | Get token-budgeted chat history |
+| **Context** | |
 | `share_context` | Post a decision/note/TODO/snippet |
 | `get_context` | Get entry by ID |
 | `list_contexts` | List recent entries (filterable) |
 | `search_contexts` | Full-text search |
 | `delete_context` | Remove an entry |
+| **Memory** | |
+| `remember` | Save a fact/preference across ALL projects |
+| `recall` | Get all universal memories |
+| `forget` | Remove a memory |
+| **Projects** | |
 | `list_projects` | List all projects |
 | `register_project` | Add a project |
 | `get_project_summary` | Project overview + activity |
-
-## Token optimization
-
-- Entries auto-compressed on write (filler stripped, common words abbreviated)
-- `get_chat` returns a token-budgeted window: recent entries in full, older ones as a rolling summary
-- Default budget: 2000 tokens. Configurable per call.
 
 ## Architecture
 

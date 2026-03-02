@@ -108,9 +108,9 @@ async function main() {
 
         // 2. List tools
         const toolsResp = await send(proc, 'tools/list');
-        await test('Lists all 10 tools', () => {
+        await test('Lists all 13 tools', () => {
             const tools = toolsResp.result.tools;
-            assert(tools.length === 10, `Expected 10 tools, got ${tools.length}`);
+            assert(tools.length === 13, `Expected 13 tools, got ${tools.length}`);
             const names = tools.map((t) => t.name).sort();
             assert(names.includes('share_context'), 'Missing share_context');
             assert(names.includes('list_contexts'), 'Missing list_contexts');
@@ -118,6 +118,9 @@ async function main() {
             assert(names.includes('list_projects'), 'Missing list_projects');
             assert(names.includes('log_chat'), 'Missing log_chat');
             assert(names.includes('get_chat'), 'Missing get_chat');
+            assert(names.includes('remember'), 'Missing remember');
+            assert(names.includes('recall'), 'Missing recall');
+            assert(names.includes('forget'), 'Missing forget');
         });
 
         // 3. Share context
@@ -308,6 +311,62 @@ async function main() {
         await test('get_chat returns empty for unknown project', () => {
             const result = JSON.parse(emptyResp.result.content[0].text);
             assert(result.entries === 0, 'Should be empty');
+        });
+
+        // ─── Universal Memory Tests ──────────────────────────────────
+        console.log('\n🧠 Testing universal memory...\n');
+
+        const remResp = await send(proc, 'tools/call', {
+            name: 'remember',
+            arguments: { key: 'hosting_provider', value: 'Coolify', category: 'infrastructure', source: 'antigravity' },
+        });
+        await test('remember saves a fact', () => {
+            const r = JSON.parse(remResp.result.content[0].text);
+            assert(r.ok, 'remember failed');
+        });
+
+        await send(proc, 'tools/call', {
+            name: 'remember',
+            arguments: { key: 'preferred_lang', value: 'TypeScript', category: 'preferences', source: 'cursor' },
+        });
+
+        const recResp = await send(proc, 'tools/call', {
+            name: 'recall',
+            arguments: {},
+        });
+        await test('recall returns all memories', () => {
+            const r = JSON.parse(recResp.result.content[0].text);
+            assert(r.count === 2, `Expected 2 memories, got ${r.count}`);
+            assert(r.memories.infrastructure, 'Missing infrastructure category');
+            assert(r.memories.preferences, 'Missing preferences category');
+        });
+
+        const recCatResp = await send(proc, 'tools/call', {
+            name: 'recall',
+            arguments: { category: 'infrastructure' },
+        });
+        await test('recall filters by category', () => {
+            const r = JSON.parse(recCatResp.result.content[0].text);
+            assert(r.count === 1, 'Should have 1 infra memory');
+            assert(r.memories.infrastructure[0].value === 'Coolify', 'Wrong value');
+        });
+
+        const forgetResp = await send(proc, 'tools/call', {
+            name: 'forget',
+            arguments: { key: 'hosting_provider' },
+        });
+        await test('forget removes a memory', () => {
+            const r = JSON.parse(forgetResp.result.content[0].text);
+            assert(r.ok, 'forget failed');
+        });
+
+        const afterForget = await send(proc, 'tools/call', {
+            name: 'recall',
+            arguments: {},
+        });
+        await test('memory is gone after forget', () => {
+            const r = JSON.parse(afterForget.result.content[0].text);
+            assert(r.count === 1, 'Should only have 1 memory left');
         });
 
         console.log('\n🎉 All tests passed!\n');

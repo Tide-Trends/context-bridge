@@ -195,6 +195,62 @@ export const TOOL_DEFINITIONS = [
             required: ['project'],
         },
     },
+    {
+        name: 'remember',
+        description:
+            'Save a universal memory that persists across ALL projects and conversations. Use this for user preferences, tooling choices, hosting providers, coding conventions, or any fact that should be known everywhere. Examples: "Uses Coolify for hosting", "Prefers TypeScript over JavaScript", "Database is PostgreSQL on Supabase".',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                key: {
+                    type: 'string',
+                    description: 'Short identifier for this memory (e.g., "hosting_provider", "preferred_language", "db_choice")',
+                },
+                value: {
+                    type: 'string',
+                    description: 'The actual fact or preference to remember',
+                },
+                category: {
+                    type: 'string',
+                    description: 'Category for organization',
+                    enum: ['preferences', 'tooling', 'infrastructure', 'conventions', 'general'],
+                    default: 'general',
+                },
+                source: {
+                    type: 'string',
+                    description: 'Which tool is saving this',
+                    enum: ['antigravity', 'cursor', 'vscode', 'opencode'],
+                },
+            },
+            required: ['key', 'value', 'source'],
+        },
+    },
+    {
+        name: 'recall',
+        description:
+            'Retrieve all universal memories. These are persistent facts and preferences that apply to EVERY project. Call this at the start of every conversation to know user preferences, tooling choices, and conventions.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                category: {
+                    type: 'string',
+                    description: 'Optional: filter by category',
+                    enum: ['preferences', 'tooling', 'infrastructure', 'conventions', 'general'],
+                },
+            },
+        },
+    },
+    {
+        name: 'forget',
+        description: 'Remove a universal memory by its key.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                key: { type: 'string', description: 'The key of the memory to remove' },
+            },
+            required: ['key'],
+        },
+    },
 ];
 
 // ─── Tool Handlers ──────────────────────────────────────────────────────────
@@ -221,6 +277,12 @@ export function handleTool(name, args) {
             return logChat(args);
         case 'get_chat':
             return getChat(args);
+        case 'remember':
+            return rememberFact(args);
+        case 'recall':
+            return recallFacts(args);
+        case 'forget':
+            return forgetFact(args);
         default:
             return { content: [{ type: 'text', text: `Unknown tool: ${name}` }], isError: true };
     }
@@ -537,5 +599,72 @@ function getChat({ project, token_budget = 2000 }) {
                 }),
             },
         ],
+    };
+}
+
+// ─── Universal Memory ───────────────────────────────────────────────────────
+
+function rememberFact({ key, value, category = 'general', source }) {
+    const db = getDb();
+    const now = new Date().toISOString();
+
+    db.prepare(`
+    INSERT INTO universal_memory (key, value, category, source, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+    ON CONFLICT(key) DO UPDATE SET value = excluded.value, category = excluded.category, source = excluded.source, updated_at = excluded.updated_at
+  `).run(key, value, category, source, now, now);
+
+    return {
+        content: [
+            {
+                type: 'text',
+                text: JSON.stringify({ ok: true, key, message: `Remembered: ${key} = ${value}` }),
+            },
+        ],
+    };
+}
+
+function recallFacts({ category } = {}) {
+    const db = getDb();
+
+    let sql = 'SELECT * FROM universal_memory';
+    const params = [];
+
+    if (category) {
+        sql += ' WHERE category = ?';
+        params.push(category);
+    }
+
+    sql += ' ORDER BY category, key';
+
+    const rows = db.prepare(sql).all(...params);
+
+    // Group by category for clean output
+    const grouped = {};
+    for (const row of rows) {
+        if (!grouped[row.category]) grouped[row.category] = [];
+        grouped[row.category].push({ key: row.key, value: row.value, source: row.source, updated: row.updated_at });
+    }
+
+    return {
+        content: [
+            {
+                type: 'text',
+                text: JSON.stringify({ count: rows.length, memories: grouped }),
+            },
+        ],
+    };
+}
+
+function forgetFact({ key }) {
+    const db = getDb();
+    const result = db.prepare('DELETE FROM universal_memory WHERE key = ?').run(key);
+
+    if (result.changes === 0) {
+        return { content: [{ type: 'text', text: JSON.stringify({ error: `Memory "${key}" not found` }) }], isError: true };
+    }
+
+    return {
+        content: [{ type: 'text', text: JSON.stringify({ ok: true, message: `Forgot: ${key}` }) }],
     };
 }
