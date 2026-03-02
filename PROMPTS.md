@@ -29,9 +29,23 @@ Always use source="cursor" when calling tools.
 
 ---
 
-## For VS Code (Copilot Chat)
+## For VS Code (Cline / Roo Code)
 
-Paste this at the start of a Copilot Chat conversation:
+Add this to your MCP settings (Settings → MCP Servers → Edit settings.json):
+
+```json
+{
+  "mcpServers": {
+    "context-bridge": {
+      "command": "node",
+      "args": ["~/.context-bridge/server/src/index.js"],
+      "disabled": false
+    }
+  }
+}
+```
+
+Then paste this at the start of your conversation:
 
 ```
 You are connected to Context Bridge, a shared memory system that syncs context between AI coding tools (Cursor, VS Code, Antigravity, OpenCode). Everything is stored in a shared database that all tools can read and write to.

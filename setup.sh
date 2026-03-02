@@ -48,29 +48,20 @@ else
   echo "  ✅ Cursor configured"
 fi
 
-# Configure VS Code
-VSCODE_CONFIG="$HOME/.vscode/settings.json"
-mkdir -p "$(dirname "$VSCODE_CONFIG")"
-if [ -f "$VSCODE_CONFIG" ]; then
-  if grep -q "context-bridge" "$VSCODE_CONFIG" 2>/dev/null; then
-    echo "  ✅ VS Code already configured"
-  else
-    node -e "
-      const fs = require('fs');
-      const cfg = JSON.parse(fs.readFileSync('$VSCODE_CONFIG','utf8'));
-      cfg.mcp = cfg.mcp || {};
-      cfg.mcp.servers = cfg.mcp.servers || {};
-      cfg.mcp.servers['context-bridge'] = { command: 'node', args: ['$SERVER_PATH'] };
-      fs.writeFileSync('$VSCODE_CONFIG', JSON.stringify(cfg, null, 2));
-    "
-    echo "  ✅ VS Code configured"
-  fi
-else
-  echo '{"mcp":{"servers":{"context-bridge":{"command":"node","args":["'$SERVER_PATH'"]}}}}' > "$VSCODE_CONFIG"
-  echo "  ✅ VS Code configured"
-fi
-
+# Configure VS Code (Instructions)
+echo "  ℹ️ VS Code configuration (for Cline / Roo Code):"
+echo "    Add this to your MCP settings file:"
+echo "    {"
+echo "      \"mcpServers\": {"
+echo "        \"context-bridge\": {"
+echo "          \"command\": \"node\","
+echo "          \"args\": [\"$SERVER_PATH\"],"
+echo "          \"disabled\": false"
+echo "        }"
+echo "      }"
+echo "    }"
 echo ""
+
 echo "🎉 Done! Context Bridge is ready."
 echo ""
 echo "📋 Paste the prompt from PROMPTS.md into each tool to activate."
