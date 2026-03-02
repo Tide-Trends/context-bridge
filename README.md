@@ -1,77 +1,67 @@
 # 🔌 Context Bridge
 
-**Share context between AI coding tools.** One SQLite database, every tool in sync.
+**One brain for all your AI coding tools.**
 
-Works with **Cursor**, **VS Code (Copilot)**, **Antigravity**, and **OpenCode** — or any tool that supports [MCP](https://modelcontextprotocol.io).
+If you use Cursor, VS Code (Copilot/Cline/Roo), OpenCode, and Antigravity, they don't talk to each other. If Cursor fixes a bug, VS Code doesn't know about it. 
 
-## What it does
+**Context Bridge solves this. It runs a local database that all your AI tools read and write to.**
 
-When you work with multiple AI coding assistants, they don't know what the others did. Context Bridge fixes that:
+---
 
-- **Per-project chat logging** — Every conversation turn gets auto-compressed and saved. Any tool can pick up where another left off.
-- **Universal memory** — Save preferences and facts that apply to EVERY project (e.g., "Uses Coolify for hosting", "Prefers TypeScript").
-- **Shared context store** — Post decisions, notes, TODOs, snippets across tools. Search them later.
-- **Token-optimized** — Entries auto-compressed on write. Chat retrieval is token-budgeted with rolling summaries for older entries.
+## What does it do?
 
-## Setup (30 seconds)
+Context Bridge gives your AI tools two superpowers:
+
+### 1. Global Memory (Everywhere)
+Teach your AI something *once*, and it remembers it for *every project forever*.
+* *Example:* "I prefer TypeScript over JavaScript"
+* *Example:* "I deploy on Vercel" 
+* *Whenever you start a new conversation, the AI instantly knows your universal preferences.*
+
+### 2. Per-Project Context (Local)
+Your AI tools leave notes for each other inside a specific project.
+* *Example:* Cursor figures out how an undocumented API works and leaves a note. Later, VS Code reads that note instead of starting from scratch.
+* *Example:* The AI logs a compressed version of your chat history. So if you switch from Antigravity to Cursor mid-task, Cursor can read exactly what you've been working on.
+
+---
+
+## Getting Started (1-Minute Setup)
+
+You don't need any complex configuration. Just run this command in your terminal:
 
 ```bash
 bash <(curl -s https://raw.githubusercontent.com/Tide-Trends/context-bridge/main/setup.sh)
 ```
 
-This will:
-1. Clone the repo to `~/.context-bridge/server`
-2. Install dependencies
-3. Auto-configure Cursor and VS Code
+**What this does:**
+1. Downloads the server to `~/.context-bridge`
+2. Automatically configures **Cursor** and **VS Code (Copilot, Cline, & Roo Code)**.
 
-Then paste the prompt for your tool from [`PROMPTS.md`](PROMPTS.md).
+### The Final Step
+Your AI tools need to know the "rules of the game". Open the [`PROMPTS.md`](PROMPTS.md) file and paste the specific prompt for your tool into its system rules.
 
-### Manual setup
+---
+
+## How it works under the hood
+
+Context Bridge uses the [Model Context Protocol (MCP)](https://modelcontextprotocol.io). 
+
+It runs an ultra-lightweight SQLite database locally on your machine. All your AI tools connect to it simultaneously (using `stdio` and WAL mode for safe concurrency). They auto-compress chat histories to save tokens, and smartly budget how much past context to pull.
+
+| Tool Category | What the AI can do |
+|---------------|--------------------|
+| **🧠 Global Memory** | `remember`, `recall`, `forget` universal facts across all projects. |
+| **📁 Project Chat** | `log_chat`, `get_chat` to pick up conversations right where you left off. |
+| **💡 Shared Notes** | `share_context`, `search_contexts` to leave architectural decisions and TODOs. |
+
+### Manual Installation (Optional)
+
+If you prefer building from source rather than using the setup script:
 
 ```bash
 git clone https://github.com/Tide-Trends/context-bridge.git ~/.context-bridge/server
 cd ~/.context-bridge/server && npm install
 ```
 
-Add to your MCP config:
-```json
-{
-  "command": "node",
-  "args": ["~/.context-bridge/server/src/index.js"]
-}
-```
-
-## Tools (13 total)
-
-| Tool | What it does |
-|------|-------------|
-| **Chat** | |
-| `log_chat` | Save a chat turn (auto-compressed) |
-| `get_chat` | Get token-budgeted chat history |
-| **Context** | |
-| `share_context` | Post a decision/note/TODO/snippet |
-| `get_context` | Get entry by ID |
-| `list_contexts` | List recent entries (filterable) |
-| `search_contexts` | Full-text search |
-| `delete_context` | Remove an entry |
-| **Memory** | |
-| `remember` | Save a fact/preference across ALL projects |
-| `recall` | Get all universal memories |
-| `forget` | Remove a memory |
-| **Projects** | |
-| `list_projects` | List all projects |
-| `register_project` | Add a project |
-| `get_project_summary` | Project overview + activity |
-
-## Architecture
-
-```
-Cursor ──┐
-VS Code ─┤── stdio ──→ context-bridge MCP ──→ SQLite (WAL)
-OpenCode ┤                                    ~/.context-bridge/store.db
-Antigrav ┘
-```
-
-## License
-
-MIT
+Then configure your MCP engine to run:
+`node ~/.context-bridge/server/src/index.js`
