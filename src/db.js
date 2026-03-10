@@ -70,6 +70,34 @@ export function getDb() {
     );
 
     CREATE INDEX IF NOT EXISTS idx_memory_category ON universal_memory(category);
+
+    -- FTS5 Virtual Table for Lightning Fast Searching
+    CREATE VIRTUAL TABLE IF NOT EXISTS contexts_fts USING fts5(
+      id UNINDEXED,
+      title,
+      content,
+      tags,
+      content='contexts',
+      content_rowid='rowid'
+    );
+
+    -- Triggers to automatically sync the FTS5 index when contexts change
+    CREATE TRIGGER IF NOT EXISTS contexts_ai AFTER INSERT ON contexts BEGIN
+      INSERT INTO contexts_fts(rowid, id, title, content, tags) 
+      VALUES (new.rowid, new.id, new.title, new.content, new.tags);
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS contexts_ad AFTER DELETE ON contexts BEGIN
+      INSERT INTO contexts_fts(contexts_fts, rowid, id, title, content, tags) 
+      VALUES('delete', old.rowid, old.id, old.title, old.content, old.tags);
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS contexts_au AFTER UPDATE ON contexts BEGIN
+      INSERT INTO contexts_fts(contexts_fts, rowid, id, title, content, tags) 
+      VALUES('delete', old.rowid, old.id, old.title, old.content, old.tags);
+      INSERT INTO contexts_fts(rowid, id, title, content, tags) 
+      VALUES (new.rowid, new.id, new.title, new.content, new.tags);
+    END;
   `);
 
   return _db;

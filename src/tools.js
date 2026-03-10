@@ -369,17 +369,31 @@ function listContexts({ project, source, type, tag, limit = 20 } = {}) {
 function searchContexts({ query, project, limit = 20 }) {
     const db = getDb();
     limit = Math.min(Math.max(1, limit || 20), 100);
-    const pattern = `%${query}%`;
 
-    let sql = 'SELECT * FROM contexts WHERE (title LIKE ? OR content LIKE ?)';
-    const params = [pattern, pattern];
+    // Escape special FTS5 characters to prevent syntax errors
+    const safeQuery = query.replace(/["*]+/g, ' ').trim();
+    if (!safeQuery) {
+        return { content: [{ type: 'text', text: JSON.stringify({ count: 0, entries: [] }) }] };
+    }
+
+    // FTS5 MATCH syntax
+    const matchQuery = `"${safeQuery}"*`;
+
+    let sql = `
+        SELECT contexts.* 
+        FROM contexts_fts 
+        JOIN contexts ON contexts.rowid = contexts_fts.rowid 
+        WHERE contexts_fts MATCH ?
+    `;
+    const params = [matchQuery];
 
     if (project) {
-        sql += ' AND project = ?';
+        sql += ' AND contexts.project = ?';
         params.push(project);
     }
 
-    sql += ' ORDER BY created_at DESC LIMIT ?';
+    // ORDER BY rank utilizes BM25 scoring for most relevant results first
+    sql += ' ORDER BY rank LIMIT ?';
     params.push(limit);
 
     const rows = db.prepare(sql).all(...params);
